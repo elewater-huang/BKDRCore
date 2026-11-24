@@ -1,0 +1,8 @@
+#include "BKDRCore.h"
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cmath>
+#include <windows.h>
+static bool number(const char* s,double& v){char* e;v=strtod(s,&e);return e!=s&&!*e&&std::isfinite(v);}
+int main(int argc,char** argv){if(argc<4||strcmp(argv[1],"--port")){puts("BKDRCLI --port COM14 id|snapshot|setvi V A|on --confirm|off|status|local|query LINES COMMAND|record COUNT HZ");return 2;}const char* c=argv[3];int r=BKDR_OpenSerial(argv[2]);char b[4096]={};double v,i,sv,si;if(!r){if(!strcmp(c,"id")){r=BKDR_GetID(b,sizeof b);if(!r)puts(b);}else if(!strcmp(c,"snapshot")){r=BKDR_GetSnapshot(&v,&i,&sv,&si);if(!r)printf("%.3f,%.4f,%.3f,%.4f\n",v,i,sv,si);}else if(!strcmp(c,"setvi")&&argc==6&&number(argv[4],v)&&number(argv[5],i))r=BKDR_SetVI(v,i);else if(!strcmp(c,"on")&&argc==5&&!strcmp(argv[4],"--confirm"))r=BKDR_OutputOn();else if(!strcmp(c,"off"))r=BKDR_OutputOff();else if(!strcmp(c,"local"))r=BKDR_Local();else if(!strcmp(c,"status")){r=BKDR_GetStatus(b,sizeof b);if(!r)puts(b);}else if(!strcmp(c,"query")&&argc==6&&strchr(argv[5],'?')&&!strchr(argv[5],';')){r=BKDR_Query(argv[5],atoi(argv[4]),b,sizeof b);if(!r)puts(b);}else if(!strcmp(c,"record")&&argc==6){double count,hz;if(!number(argv[4],count)||!number(argv[5],hz)||count<1||count>1000000||floor(count)!=count||hz<0.01||hz>12)r=-4;else{puts("elapsed_ms,voltage_V,current_A");DWORD start=GetTickCount();for(int k=0;k<(int)count;k++){r=BKDR_GetVI(&v,&i);if(r)break;printf("%lu,%.3f,%.4f\n",(unsigned long)(GetTickCount()-start),v,i);fflush(stdout);double delay=(k+1)*1000/hz-(GetTickCount()-start);if(delay>0&&k+1<count)Sleep((DWORD)delay);}}}else r=-4;}if(r){BKDR_GetLastError(b,sizeof b);fprintf(stderr,"Error %d: %s\n",r,b);}BKDR_Close();return r?1:0;}
