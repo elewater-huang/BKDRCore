@@ -1,0 +1,7 @@
+dist/
+*.obj
+*.lib
+*.exp
+*.dll
+*.exe
+*.csv
